@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Arduino Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--surface:#141720;--surface2:#1c2030;--border:#2a3040;
+  --green:#00ff88;--green2:#00cc6a;--amber:#ffb300;--red:#ff4444;--blue:#4d9fff;
+  --text:#e8ecf4;--muted:#6b7a9a;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+.app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem}
+
+/* header */
+.header{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.logo{width:38px;height:38px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:22px;height:22px}
+.header-title{font-size:19px;font-weight:700}
+.header-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+.status-pill{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s}
+.status-dot.ok{background:var(--green);box-shadow:0 0 7px var(--green)}
+.status-dot.err{background:var(--red)}
+.status-dot.busy{background:var(--amber);animation:blink .8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{font-family:var(--mono);font-size:12px;color:var(--muted);padding:7px 16px;cursor:pointer;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;transition:all .15s;background:transparent;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--green);border-color:var(--border);background:var(--surface);border-bottom-color:var(--surface)}
+
+/* steps */
+.steps{display:flex;margin-bottom:1rem;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.step{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--muted);padding:7px 4px;border-right:1px solid var(--border);transition:all .2s;text-align:center}
+.step:last-child{border-right:none}
+.step.active{color:var(--green);background:rgba(0,255,136,.07)}
+.step.done{color:var(--green);opacity:.5}
+.step-num{font-size:10px;opacity:.6}
+
+/* panels */
+.panel{display:none}
+.panel.active{display:block}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:.6rem}
+
+/* text input */
+.text-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;outline:none;resize:vertical;min-height:70px;transition:border .15s}
+.text-input:focus{border-color:var(--green)}
+.text-input::placeholder{color:var(--muted)}
+
+/* code editor */
+.code-editor{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.9rem 1rem;color:#c8d3eb;font-family:var(--mono);font-size:12px;line-height:1.75;outline:none;resize:vertical;min-height:220px;transition:border .15s;tab-size:2;white-space:pre;overflow-x:auto}
+.code-editor:focus{border-color:var(--green)}
+.code-editor::placeholder{color:var(--muted);font-style:italic;white-space:normal}
+
+/* quick prompts */
+.quick-prompts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem}
+.quick-btn{font-size:11px;font-family:var(--mono);color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px;cursor:pointer;transition:all .15s}
+.quick-btn:hover{color:var(--green);border-color:var(--green)}
+
+/* controls */
+.controls{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;margin-top:.75rem}
+.ctrl-group{display:flex;flex-direction:column;min-width:130px}
+.ctrl-group.grow{flex:1}
+.field-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.35rem}
+select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border .15s}
+select:focus{border-color:var(--green)}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;height:34px}
+.btn-green{background:var(--green);color:#000}
+.btn-green:hover:not(:disabled){background:var(--green2)}
+.btn-blue{background:rgba(77,159,255,.2);color:var(--blue);border:1px solid var(--blue)}
+.btn-blue:hover:not(:disabled){background:rgba(77,159,255,.3)}
+.btn-amber{background:rgba(255,179,0,.15);color:var(--amber);border:1px solid var(--amber)}
+.btn-amber:hover:not(:disabled){background:rgba(255,179,0,.25)}
+.btn-red{background:rgba(255,68,68,.15);color:var(--red);border:1px solid rgba(255,68,68,.4)}
+.btn-red:hover:not(:disabled){background:rgba(255,68,68,.25)}
+.btn-muted{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-muted:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* output area */
+.output-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:700px){.output-grid{grid-template-columns:1fr}}
+
+.code-display{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1rem;font-family:var(--mono);font-size:12px;line-height:1.75;color:#c8d3eb;overflow-x:auto;min-height:80px;max-height:320px;overflow-y:auto;white-space:pre;tab-size:2}
+.code-display.empty{color:var(--muted);font-style:italic;white-space:normal;min-height:60px}
+
+.wiring-display{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1rem;font-family:var(--mono);font-size:12px;color:#adbcd8;line-height:1.8;min-height:80px;max-height:320px;overflow-y:auto;white-space:pre-wrap}
+.wiring-display.empty{color:var(--muted);font-style:italic}
+
+.explanation-box{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1rem;font-family:var(--mono);font-size:12px;color:#adbcd8;line-height:1.8;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-bottom:.75rem;display:none}
+.explanation-box.visible{display:block}
+
+.code-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:6px}
+.code-toolbar-title{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.toolbar-btns{display:flex;gap:6px}
+.sm-btn{font-size:11px;font-family:var(--mono);color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 9px;cursor:pointer;transition:color .15s}
+.sm-btn:hover{color:var(--text)}
+.sm-btn.active{color:var(--green);border-color:var(--green)}
+
+/* errors */
+.error-banner{background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);border-radius:8px;padding:.75rem 1rem;font-family:var(--mono);font-size:12px;color:var(--red);margin-bottom:1rem;display:none;word-break:break-word}
+.error-banner.visible{display:block}
+.compile-err{background:rgba(255,68,68,.06);border:1px solid rgba(255,68,68,.2);border-radius:6px;padding:.75rem;font-family:var(--mono);font-size:11px;color:#ff8888;margin-top:.75rem;white-space:pre-wrap;max-height:160px;overflow-y:auto;display:none}
+.compile-err.visible{display:block}
+.original-err{background:rgba(255,179,0,.06);border:1px solid rgba(255,179,0,.2);border-radius:6px;padding:.75rem;font-family:var(--mono);font-size:11px;color:var(--amber);margin-bottom:.75rem;white-space:pre-wrap;max-height:120px;overflow-y:auto;display:none}
+.original-err.visible{display:block}
+
+/* success banner */
+.success-banner{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.25);border-radius:8px;padding:.75rem 1rem;font-family:var(--mono);font-size:12px;color:var(--green);margin-bottom:1rem;display:none}
+.success-banner.visible{display:block}
+
+/* log */
+.log-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.log-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.log-area{font-family:var(--mono);font-size:11px;line-height:1.85;max-height:160px;overflow-y:auto}
+.log-line{display:flex;gap:10px;padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-time{color:var(--muted);min-width:58px;flex-shrink:0}
+.c-ok{color:var(--green)}.c-err{color:var(--red)}.c-info{color:var(--amber)}.c-dim{color:var(--muted)}
+
+.divider{height:1px;background:var(--border);margin:.75rem 0}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- header -->
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 22 22" fill="none" stroke="#000" stroke-width="2">
+        <rect x="2" y="7" width="18" height="11" rx="2"/>
+        <path d="M7 7V5M11 7V3M15 7V5"/>
+        <circle cx="8" cy="12" r="1.5" fill="#000" stroke="none"/>
+        <circle cx="14" cy="12" r="1.5" fill="#000" stroke="none"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Arduino Assistant</div>
+      <div class="header-sub">groq · llama-3.1-8b · arduino-cli · COM6</div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusLabel">idle</span>
+    </div>
+  </div>
+
+  <!-- steps -->
+  <div class="steps" id="stepsBar">
+    <div class="step" id="s1"><span class="step-num">01</span> input</div>
+    <div class="step" id="s2"><span class="step-num">02</span> ai gen</div>
+    <div class="step" id="s3"><span class="step-num">03</span> compile</div>
+    <div class="step" id="s4"><span class="step-num">04</span> upload</div>
+  </div>
+
+  <!-- error / success banners -->
+  <div class="error-banner" id="errorBanner"></div>
+  <div class="success-banner" id="successBanner"></div>
+
+  <!-- tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('generate')">Generate Code</button>
+    <button class="tab" onclick="switchTab('fix')">Fix / Edit Code</button>
+  </div>
+
+  <!-- ═══ TAB: GENERATE ═══ -->
+  <div class="panel active" id="panel-generate">
+    <div class="card">
+      <div class="card-label">describe your project</div>
+      <textarea class="text-input" id="promptInput"
+        placeholder="e.g. blink LED on pin 13 every 500ms with a button on pin 2 to toggle..."
+        onkeydown="handleKey(event,'generate')" rows="3"></textarea>
+
+      <div class="card-label" style="margin-top:.75rem">quick prompts</div>
+      <div class="quick-prompts">
+        <button class="quick-btn" onclick="setPrompt('Blink LED on pin 13 every 500ms')">blink LED</button>
+        <button class="quick-btn" onclick="setPrompt('DHT11 temperature sensor on pin 2 print to serial')">DHT11</button>
+        <button class="quick-btn" onclick="setPrompt('Servo on pin 9 sweep 0 to 180 degrees')">servo</button>
+        <button class="quick-btn" onclick="setPrompt('Potentiometer on A0 controls LED brightness on pin 9')">potentiometer</button>
+        <button class="quick-btn" onclick="setPrompt('HC-SR04 ultrasonic sensor pins 9 10 print distance')">ultrasonic</button>
+        <button class="quick-btn" onclick="setPrompt('Button on pin 2 controls LED on pin 13 with debounce')">button + LED</button>
+        <button class="quick-btn" onclick="setPrompt('LCD 16x2 I2C display hello world')">LCD I2C</button>
+        <button class="quick-btn" onclick="setPrompt('4x4 keypad matrix read key presses to serial')">keypad</button>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl-group">
+          <div class="field-label">ai provider</div>
+          <select id="providerSel" onchange="onProviderChange()">
+            <option value="groq" selected>Groq (fast)</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <div class="field-label">model</div>
+          <select id="modelSel">
+            <option value="llama-3.1-8b-instant" selected>llama-3.1-8b-instant</option>
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b</option>
+            <option value="gemma2-9b-it">gemma2-9b</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <div class="field-label">serial port</div>
+          <select id="comPort">
+            <option>COM3</option><option>COM4</option><option>COM5</option>
+            <option selected>COM6</option><option>COM7</option>
+            <option>/dev/ttyUSB0</option><option>/dev/ttyACM0</option>
+          </select>
+        </div>
+        <button class="btn btn-green" id="runBtn" onclick="runGenerate()">run + upload</button>
+        <button class="btn btn-muted" id="compileOnlyBtn" onclick="runCompileOnly()">compile only</button>
+      </div>
+    </div>
+
+    <!-- output -->
+    <div id="generateOutput" style="display:none">
+      <div class="output-grid">
+        <div>
+          <div class="code-toolbar">
+            <span class="code-toolbar-title">generated code</span>
+            <div class="toolbar-btns">
+              <button class="sm-btn" id="editGenBtn" onclick="toggleEditMode()">edit</button>
+              <button class="sm-btn" onclick="sendToFix()">send to fix tab</button>
+              <button class="sm-btn" id="copyGenBtn" onclick="copyCode('gen')">copy</button>
+              <button class="sm-btn" onclick="downloadCode()">download</button>
+            </div>
+          </div>
+          <div class="code-display empty" id="codeDisplay">// code will appear here...</div>
+          <textarea class="code-editor" id="codeEditorGen" style="display:none"
+            placeholder="// edit the generated code here..."></textarea>
+          <div class="compile-err" id="compileErrGen"></div>
+
+          <!-- edit mode action buttons -->
+          <div id="editActions" style="display:none;margin-top:.6rem;display:none">
+            <div class="controls">
+              <button class="btn btn-blue" onclick="recompileEdited()">recompile</button>
+              <button class="btn btn-green" onclick="uploadEdited()">upload edited</button>
+              <button class="sm-btn" onclick="cancelEdit()" style="height:34px;padding:0 12px">cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="code-toolbar">
+            <span class="code-toolbar-title">wiring guide</span>
+          </div>
+          <div class="wiring-display empty" id="wiringDisplay">wiring guide will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: FIX / EDIT ═══ -->
+  <div class="panel" id="panel-fix">
+    <div class="card">
+      <div class="card-label">paste your code here</div>
+      <textarea class="code-editor" id="pasteCode"
+        placeholder="// Paste your Arduino code here...
+// It will be compiled to detect errors, then AI will fix it."
+        rows="12"></textarea>
+
+      <div class="divider"></div>
+
+      <div class="card-label">instruction for AI</div>
+      <textarea class="text-input" id="fixPrompt"
+        placeholder="e.g. fix compile errors, or: add a buzzer on pin 8, or: optimize this code..."
+        onkeydown="handleKey(event,'fix')" rows="2"></textarea>
+
+      <div class="controls">
+        <div class="ctrl-group">
+          <div class="field-label">ai provider</div>
+          <select id="fixProviderSel" onchange="onFixProviderChange()">
+            <option value="groq" selected>Groq (fast)</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <div class="field-label">model</div>
+          <select id="fixModelSel">
+            <option value="llama-3.1-8b-instant" selected>llama-3.1-8b-instant</option>
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b</option>
+            <option value="gemma2-9b-it">gemma2-9b</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <div class="field-label">serial port</div>
+          <select id="fixComPort">
+            <option>COM3</option><option>COM4</option><option>COM5</option>
+            <option selected>COM6</option><option>COM7</option>
+            <option>/dev/ttyUSB0</option><option>/dev/ttyACM0</option>
+          </select>
+        </div>
+        <button class="btn btn-amber" id="fixBtn" onclick="runFix()">fix + upload</button>
+        <button class="btn btn-blue" id="fixCompileBtn" onclick="runFixCompileOnly()">fix only</button>
+        <button class="btn btn-muted" id="checkBtn" onclick="runCheckOnly()">check errors</button>
+      </div>
+    </div>
+
+    <!-- fix output -->
+    <div id="fixOutput" style="display:none">
+      <!-- original errors -->
+      <div class="card-label">original compile errors</div>
+      <div class="original-err" id="originalErr"></div>
+
+      <!-- explanation -->
+      <div class="card-label" style="margin-bottom:.5rem">ai explanation</div>
+      <div class="explanation-box visible" id="explanationBox"></div>
+
+      <div class="output-grid">
+        <div>
+          <div class="code-toolbar">
+            <span class="code-toolbar-title">fixed code</span>
+            <div class="toolbar-btns">
+              <button class="sm-btn" id="copyFixBtn" onclick="copyCode('fix')">copy</button>
+              <button class="sm-btn" onclick="downloadFixedCode()">download</button>
+              <button class="sm-btn" onclick="useFixedCode()">use in editor</button>
+            </div>
+          </div>
+          <div class="code-display empty" id="fixedCodeDisplay">// fixed code will appear here...</div>
+          <div class="compile-err" id="compileErrFix"></div>
+        </div>
+
+        <div>
+          <div class="code-toolbar">
+            <span class="code-toolbar-title">wiring guide</span>
+          </div>
+          <div class="wiring-display empty" id="fixWiringDisplay">wiring guide will appear here...</div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top:.5rem">
+        <button class="btn btn-green" id="uploadFixedBtn" onclick="uploadFixed()">upload fixed code</button>
+        <button class="btn btn-muted" onclick="clearFix()">clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- log -->
+  <div class="log-card">
+    <div class="log-header">
+      <span class="card-label" style="margin:0">pipeline log</span>
+      <button class="sm-btn" onclick="clearLog()">clear</button>
+    </div>
+    <div class="log-area" id="logArea">
+      <div class="log-line">
+        <span class="log-time">00:00:00</span>
+        <span class="c-dim">ready — http://localhost:5000</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const API = 'http://localhost:5000';
+let generatedCode = '';
+let fixedCode     = '';
+let wiringText    = '';
+let fixWiring     = '';
+let pollTimer     = null;
+let lastLogCount  = 0;
+let editMode      = false;
+
+const GROQ_MODELS = [
+  {value:'llama-3.1-8b-instant', label:'llama-3.1-8b-instant'},
+  {value:'llama-3.3-70b-versatile', label:'llama-3.3-70b'},
+  {value:'gemma2-9b-it', label:'gemma2-9b'},
+  {value:'mixtral-8x7b-32768', label:'mixtral-8x7b'},
+];
+const OLLAMA_MODELS = [
+  {value:'phi3', label:'phi3'},
+  {value:'llama3', label:'llama3'},
+  {value:'mistral', label:'mistral'},
+  {value:'codellama', label:'codellama'},
+];
+
+// ── utils ────────────────────────────────────────────────────────────────
+function ts() {
+  const d = new Date();
+  return [d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function log(msg, type) {
+  type = type || 'dim';
+  const area = document.getElementById('logArea');
+  const el = document.createElement('div');
+  el.className = 'log-line';
+  el.innerHTML = '<span class="log-time">'+ts()+'</span><span class="c-'+type+'">'+escHtml(msg)+'</span>';
+  area.appendChild(el);
+  area.scrollTop = area.scrollHeight;
+}
+function logType(m) {
+  m = m.toLowerCase();
+  if (m.indexOf('error')>=0||m.indexOf('fail')>=0||m.indexOf('cannot')>=0) return 'err';
+  if (m.indexOf('ok')>=0||m.indexOf('success')>=0||m.indexOf('done')>=0||m.indexOf('uploaded')>=0) return 'ok';
+  if (m.indexOf('step')>=0||m.indexOf('running')>=0||m.indexOf('calling')>=0) return 'info';
+  return 'dim';
+}
+function clearLog() { document.getElementById('logArea').innerHTML = ''; }
+function setStep(n) {
+  for (var i=1;i<=4;i++) {
+    var el = document.getElementById('s'+i);
+    if (i<n) el.className='step done';
+    else if (i===n) el.className='step active';
+    else el.className='step';
+  }
+}
+function setStatus(cls, label) {
+  document.getElementById('statusDot').className='status-dot'+(cls?' '+cls:'');
+  document.getElementById('statusLabel').textContent=label||'idle';
+}
+function showError(msg) {
+  var b=document.getElementById('errorBanner');
+  b.textContent=msg; b.classList.add('visible');
+  document.getElementById('successBanner').classList.remove('visible');
+}
+function showSuccess(msg) {
+  var b=document.getElementById('successBanner');
+  b.textContent=msg; b.classList.add('visible');
+  document.getElementById('errorBanner').classList.remove('visible');
+}
+function clearBanners() {
+  document.getElementById('errorBanner').classList.remove('visible');
+  document.getElementById('successBanner').classList.remove('visible');
+}
+function setBusy(yes) {
+  ['runBtn','compileOnlyBtn','fixBtn','fixCompileBtn','checkBtn','uploadFixedBtn'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = yes;
+  });
+}
+
+// ── tabs ─────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t,i) {
+    t.classList.toggle('active', (i===0&&name==='generate')||(i===1&&name==='fix'));
+  });
+  document.getElementById('panel-generate').classList.toggle('active', name==='generate');
+  document.getElementById('panel-fix').classList.toggle('active', name==='fix');
+  clearBanners();
+}
+
+// ── provider switch ───────────────────────────────────────────────────────
+function populateModels(selId, provider) {
+  var sel = document.getElementById(selId);
+  var models = provider==='groq' ? GROQ_MODELS : OLLAMA_MODELS;
+  sel.innerHTML = '';
+  models.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value=m.value; opt.textContent=m.label;
+    sel.appendChild(opt);
+  });
+}
+function onProviderChange() { populateModels('modelSel', document.getElementById('providerSel').value); }
+function onFixProviderChange() { populateModels('fixModelSel', document.getElementById('fixProviderSel').value); }
+
+// ── quick prompts / keyboard ──────────────────────────────────────────────
+function setPrompt(text) {
+  document.getElementById('promptInput').value = text;
+  document.getElementById('promptInput').focus();
+}
+function handleKey(e, mode) {
+  if (e.key==='Enter' && e.ctrlKey) {
+    e.preventDefault();
+    if (mode==='generate') runGenerate();
+    else runFix();
+  }
+}
+
+// ── health check ──────────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    var r = await fetch(API+'/api/health', {signal:AbortSignal.timeout(4000)});
+    var d = await r.json();
+    var msgs = [];
+    if (d.groq) msgs.push('Groq API ready');
+    if (d.ollama) msgs.push('Ollama: '+(d.ollama_models||[]).join(', '));
+    if (d.arduino_cli) msgs.push('arduino-cli found');
+    if (msgs.length) { setStatus('ok','ready'); msgs.forEach(function(m){log(m,'ok');}); }
+    else { setStatus('err','no providers'); log('No AI provider available','err'); }
+  } catch(e) {
+    setStatus('err','backend offline');
+    log('Backend not reachable — start app.py','err');
+  }
+}
+
+// ── polling logs ──────────────────────────────────────────────────────────
+function startPollingLogs() {
+  lastLogCount = 0;
+  pollTimer = setInterval(async function() {
+    try {
+      var r = await fetch(API+'/api/logs');
+      var d = await r.json();
+      d.logs.slice(lastLogCount).forEach(function(l){ log('[backend] '+l, logType(l)); });
+      lastLogCount = d.logs.length;
+      if (!d.running) stopPollingLogs();
+    } catch(e) {}
+  }, 700);
+}
+function stopPollingLogs() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer=null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GENERATE TAB
+// ═══════════════════════════════════════════════════════════
+
+async function runGenerate() {
+  var text = document.getElementById('promptInput').value.trim();
+  if (!text) { showError('Enter a description first.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','generating');
+  setStep(1);
+  log('Generating: "'+text+'"','info');
+  startPollingLogs();
+
+  var start = Date.now();
+  try {
+    var res = await fetch(API+'/api/run', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        text: text,
+        port: document.getElementById('comPort').value,
+        provider: document.getElementById('providerSel').value,
+        model: document.getElementById('modelSel').value,
+      })
+    });
+    var data = await res.json();
+    stopPollingLogs();
+
+    if (data.logs) data.logs.slice(lastLogCount).forEach(function(l){log('[backend] '+l,logType(l));});
+
+    if (data.success) {
+      showCodeOutput(data.code, data.wiring);
+      var elapsed = ((Date.now()-start)/1000).toFixed(1);
+      setStep(4);
+      showSuccess('Done in '+elapsed+'s — uploaded to '+document.getElementById('comPort').value);
+      setStatus('ok', elapsed+'s');
+      log('Pipeline complete in '+elapsed+'s','ok');
+    } else {
+      showError(data.error||'Pipeline failed');
+      if (data.compile_stderr) {
+        var ce = document.getElementById('compileErrGen');
+        ce.textContent = data.compile_stderr; ce.classList.add('visible');
+      }
+      if (data.code) showCodeOutput(data.code, data.wiring||'');
+      setStatus('err','error');
+    }
+  } catch(e) {
+    stopPollingLogs();
+    showError('Backend error: '+e.message);
+    log('Error: '+e.message,'err');
+    setStatus('err','offline');
+  }
+  setBusy(false);
+}
+
+async function runCompileOnly() {
+  var text = document.getElementById('promptInput').value.trim();
+  if (!text) { showError('Enter a description first.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','compiling');
+  setStep(2);
+  log('Compile only: "'+text+'"','info');
+  startPollingLogs();
+
+  try {
+    var res = await fetch(API+'/api/run', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        text: text,
+        port: 'NONE',
+        provider: document.getElementById('providerSel').value,
+        model: document.getElementById('modelSel').value,
+      })
+    });
+    var data = await res.json();
+    stopPollingLogs();
+
+    if (data.code) showCodeOutput(data.code, data.wiring||'');
+
+    if (data.success) {
+      showSuccess('Compiled successfully — no upload');
+      setStatus('ok','compiled');
+      setStep(3);
+    } else {
+      showError(data.error||'Failed');
+      if (data.compile_stderr) {
+        var ce = document.getElementById('compileErrGen');
+        ce.textContent = data.compile_stderr; ce.classList.add('visible');
+      }
+      setStatus('err','compile err');
+    }
+  } catch(e) {
+    stopPollingLogs();
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+function showCodeOutput(code, wiring) {
+  generatedCode = code||'';
+  wiringText    = wiring||'';
+
+  var display = document.getElementById('codeDisplay');
+  display.className = 'code-display';
+  display.textContent = code||'// no code returned';
+
+  var wd = document.getElementById('wiringDisplay');
+  wd.className = 'wiring-display';
+  wd.textContent = wiring||'No wiring info returned.';
+
+  document.getElementById('generateOutput').style.display = 'block';
+  document.getElementById('compileErrGen').classList.remove('visible');
+
+  // exit edit mode
+  if (editMode) cancelEdit();
+}
+
+// ── edit mode ──────────────────────────────────────────────────────────────
+function toggleEditMode() {
+  if (editMode) { cancelEdit(); return; }
+  editMode = true;
+  var editor = document.getElementById('codeEditorGen');
+  var display = document.getElementById('codeDisplay');
+  editor.value = generatedCode;
+  display.style.display = 'none';
+  editor.style.display = 'block';
+  document.getElementById('editActions').style.display = 'flex';
+  document.getElementById('editGenBtn').classList.add('active');
+  document.getElementById('editGenBtn').textContent = 'editing...';
+  editor.focus();
+}
+
+function cancelEdit() {
+  editMode = false;
+  document.getElementById('codeDisplay').style.display = 'block';
+  document.getElementById('codeEditorGen').style.display = 'none';
+  document.getElementById('editActions').style.display = 'none';
+  document.getElementById('editGenBtn').classList.remove('active');
+  document.getElementById('editGenBtn').textContent = 'edit';
+}
+
+async function recompileEdited() {
+  var code = document.getElementById('codeEditorGen').value.trim();
+  if (!code) { showError('No code to compile.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','compiling');
+  log('Recompiling edited code...','info');
+
+  try {
+    var res = await fetch(API+'/api/compile_only', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code: code})
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      generatedCode = code;
+      document.getElementById('codeDisplay').textContent = code;
+      cancelEdit();
+      showSuccess('Compiled successfully');
+      setStatus('ok','compiled');
+      log('Recompile OK','ok');
+    } else {
+      var ce = document.getElementById('compileErrGen');
+      ce.textContent = data.compile_stderr||data.error;
+      ce.classList.add('visible');
+      showError('Compile failed — errors shown below code');
+      setStatus('err','compile err');
+      log('Compile failed','err');
+    }
+  } catch(e) {
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+async function uploadEdited() {
+  var code = document.getElementById('codeEditorGen').value.trim();
+  if (!code) { showError('No code to upload.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','uploading');
+  setStep(4);
+  log('Uploading edited code...','info');
+
+  try {
+    var res = await fetch(API+'/api/upload_only', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        code: code,
+        port: document.getElementById('comPort').value,
+      })
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      generatedCode = code;
+      document.getElementById('codeDisplay').textContent = code;
+      cancelEdit();
+      showSuccess('Uploaded to '+document.getElementById('comPort').value);
+      setStatus('ok','uploaded');
+      log('Upload OK','ok');
+    } else {
+      showError(data.error||'Upload failed');
+      if (data.compile_stderr) {
+        var ce = document.getElementById('compileErrGen');
+        ce.textContent = data.compile_stderr; ce.classList.add('visible');
+      }
+      setStatus('err','error');
+    }
+  } catch(e) {
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+// send generated code to fix tab
+function sendToFix() {
+  if (!generatedCode) { showError('No code to send.'); return; }
+  document.getElementById('pasteCode').value = generatedCode;
+  document.getElementById('fixPrompt').value = '';
+  switchTab('fix');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FIX TAB
+// ═══════════════════════════════════════════════════════════
+
+async function runFix() {
+  var code = document.getElementById('pasteCode').value.trim();
+  var prompt = document.getElementById('fixPrompt').value.trim() || 'fix this code';
+  if (!code) { showError('Paste your code first.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','fixing');
+  setStep(1);
+  log('Fixing code: "'+prompt+'"','info');
+  startPollingLogs();
+
+  var start = Date.now();
+  try {
+    var res = await fetch(API+'/api/fix', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        code: code,
+        prompt: prompt,
+        port: document.getElementById('fixComPort').value,
+        provider: document.getElementById('fixProviderSel').value,
+        model: document.getElementById('fixModelSel').value,
+      })
+    });
+    var data = await res.json();
+    stopPollingLogs();
+
+    if (data.logs) data.logs.slice(lastLogCount).forEach(function(l){log('[backend] '+l,logType(l));});
+
+    showFixOutput(data, true);
+
+    if (data.success) {
+      var elapsed = ((Date.now()-start)/1000).toFixed(1);
+      showSuccess('Fixed and uploaded in '+elapsed+'s');
+      setStep(4);
+      setStatus('ok',elapsed+'s');
+    } else {
+      showError(data.error||'Fix failed');
+      setStatus('err','error');
+    }
+  } catch(e) {
+    stopPollingLogs();
+    showError('Error: '+e.message);
+    log('Error: '+e.message,'err');
+    setStatus('err','offline');
+  }
+  setBusy(false);
+}
+
+async function runFixCompileOnly() {
+  var code = document.getElementById('pasteCode').value.trim();
+  var prompt = document.getElementById('fixPrompt').value.trim() || 'fix this code';
+  if (!code) { showError('Paste your code first.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','fixing');
+  setStep(2);
+  log('Fix compile only: "'+prompt+'"','info');
+  startPollingLogs();
+
+  try {
+    var res = await fetch(API+'/api/fix', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        code: code,
+        prompt: prompt,
+        port: 'NONE',
+        provider: document.getElementById('fixProviderSel').value,
+        model: document.getElementById('fixModelSel').value,
+      })
+    });
+    var data = await res.json();
+    stopPollingLogs();
+
+    showFixOutput(data, false);
+
+    if (data.success) {
+      showSuccess('Fixed and compiled — no upload');
+      setStatus('ok','fixed');
+      setStep(3);
+    } else {
+      showError(data.error||'Fix failed');
+      setStatus('err','error');
+    }
+  } catch(e) {
+    stopPollingLogs();
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+async function runCheckOnly() {
+  var code = document.getElementById('pasteCode').value.trim();
+  if (!code) { showError('Paste your code first.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','checking');
+  setStep(3);
+  log('Checking code for errors...','info');
+
+  try {
+    var res = await fetch(API+'/api/compile_only', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code: code})
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      showSuccess('No compile errors found — code is valid!');
+      setStatus('ok','no errors');
+      log('Code compiled clean','ok');
+      document.getElementById('fixOutput').style.display = 'none';
+    } else {
+      var oe = document.getElementById('originalErr');
+      oe.textContent = data.compile_stderr||data.error;
+      oe.classList.add('visible');
+      document.getElementById('fixOutput').style.display = 'block';
+      document.getElementById('explanationBox').style.display = 'none';
+      document.getElementById('fixedCodeDisplay').className = 'code-display empty';
+      document.getElementById('fixedCodeDisplay').textContent = '// use Fix button to get AI-corrected code';
+      document.getElementById('fixWiringDisplay').className = 'wiring-display empty';
+      document.getElementById('fixWiringDisplay').textContent = '';
+      showError('Compile errors found — use Fix button to auto-correct');
+      setStatus('err','has errors');
+      log('Errors found: '+data.compile_stderr.split('\n')[0],'err');
+    }
+  } catch(e) {
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+function showFixOutput(data, wasUploaded) {
+  fixedCode  = data.code||'';
+  fixWiring  = data.wiring||'';
+
+  document.getElementById('fixOutput').style.display = 'block';
+
+  // original errors
+  var oe = document.getElementById('originalErr');
+  if (data.original_errors && data.original_errors !== 'No compile errors.') {
+    oe.textContent = data.original_errors;
+    oe.classList.add('visible');
+  } else {
+    oe.classList.remove('visible');
+  }
+
+  // explanation (everything before code block in output)
+  var explain = document.getElementById('explanationBox');
+  if (data.output) {
+    var parts = data.output.split('```');
+    var pre = parts[0].trim();
+    if (pre) {
+      explain.textContent = pre;
+      explain.style.display = 'block';
+    } else {
+      explain.style.display = 'none';
+    }
+  } else {
+    explain.style.display = 'none';
+  }
+
+  // fixed code
+  var fd = document.getElementById('fixedCodeDisplay');
+  if (fixedCode) {
+    fd.className = 'code-display';
+    fd.textContent = fixedCode;
+  } else {
+    fd.className = 'code-display empty';
+    fd.textContent = '// no fixed code returned';
+  }
+
+  // wiring
+  var wd = document.getElementById('fixWiringDisplay');
+  if (fixWiring) {
+    wd.className = 'wiring-display';
+    wd.textContent = fixWiring;
+  } else {
+    wd.className = 'wiring-display empty';
+    wd.textContent = 'No wiring info.';
+  }
+
+  // compile errors on fixed code
+  var ce = document.getElementById('compileErrFix');
+  if (data.compile_stderr) {
+    ce.textContent = data.compile_stderr; ce.classList.add('visible');
+  } else {
+    ce.classList.remove('visible');
+  }
+}
+
+async function uploadFixed() {
+  if (!fixedCode) { showError('No fixed code to upload.'); return; }
+
+  clearBanners();
+  setBusy(true);
+  setStatus('busy','uploading');
+  setStep(4);
+  log('Uploading fixed code...','info');
+
+  try {
+    var res = await fetch(API+'/api/upload_only', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        code: fixedCode,
+        port: document.getElementById('fixComPort').value,
+      })
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      showSuccess('Fixed code uploaded to '+document.getElementById('fixComPort').value);
+      setStatus('ok','uploaded');
+      log('Upload OK','ok');
+    } else {
+      showError(data.error||'Upload failed');
+      if (data.compile_stderr) {
+        var ce = document.getElementById('compileErrFix');
+        ce.textContent = data.compile_stderr; ce.classList.add('visible');
+      }
+      setStatus('err','error');
+    }
+  } catch(e) {
+    showError('Error: '+e.message);
+    setStatus('err','error');
+  }
+  setBusy(false);
+}
+
+function useFixedCode() {
+  if (!fixedCode) return;
+  document.getElementById('pasteCode').value = fixedCode;
+  document.getElementById('fixPrompt').value = '';
+  clearFix();
+  log('Fixed code loaded into editor','ok');
+}
+
+function clearFix() {
+  fixedCode = ''; fixWiring = '';
+  document.getElementById('fixOutput').style.display = 'none';
+  document.getElementById('originalErr').classList.remove('visible');
+  document.getElementById('compileErrFix').classList.remove('visible');
+  clearBanners();
+}
+
+// ── copy / download ───────────────────────────────────────────────────────
+function copyCode(which) {
+  var code = which==='fix' ? fixedCode : generatedCode;
+  var btnId = which==='fix' ? 'copyFixBtn' : 'copyGenBtn';
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(function() {
+    var btn = document.getElementById(btnId);
+    var orig = btn.textContent;
+    btn.textContent = 'copied!';
+    setTimeout(function(){ btn.textContent=orig; }, 1500);
+  });
+}
+function downloadCode() {
+  if (!generatedCode) return;
+  var a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(generatedCode);
+  a.download = 'sketch.ino'; a.click();
+}
+function downloadFixedCode() {
+  if (!fixedCode) return;
+  var a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(fixedCode);
+  a.download = 'sketch_fixed.ino'; a.click();
+}
+
+// ── init ──────────────────────────────────────────────────────────────────
+checkHealth();
+document.getElementById('promptInput').focus();
+</script>
+</body>
+</html>
